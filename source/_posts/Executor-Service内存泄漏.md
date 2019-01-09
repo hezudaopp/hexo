@@ -6,7 +6,7 @@ tags:
 - Executor Service
 ---
 
-线上某台机的内存吃满，通过docker stats --no-stream查看该主机微服务的情况，发现其中一个微服务的内存竟然吃掉了7g多，但是该微服务配置的Xms和Xmx都是4g，初步断定是堆外内存泄漏，因为堆外内存JVM是不负责回收。
+线上某台主机的内存吃满，通过docker stats --no-stream查看该主机微服务的情况，发现其中一个微服务的内存竟然吃掉了7g多，但是该微服务配置的Xms和Xmx都是4g，初步断定是堆外内存泄漏，因为堆外内存JVM是不负责回收。
 
 JVM的NIO的Channel和Buffer就用到堆外内存，这部分内存并不是虚拟机运行时数据区的一部分，也不是Java虚拟机规范中定义的内存区域，如果使用不当，可能会导致OutOfMemoryError异常。
 
