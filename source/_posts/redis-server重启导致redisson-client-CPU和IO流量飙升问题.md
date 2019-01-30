@@ -43,7 +43,7 @@ java3指标正常是因为java3的dubbo服务被禁用。
 ```
 
 - 在java2上执行packet peat抓包如图，但是java1, java4却没有抓包（主要考虑java1，java4 io较java2高）
-![](_v_images/20190116175455944_668045513.png)
+![](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190116175455944_668045513.png?raw=true)
 
 - watch com.pupu.product.service.impl.ActivityEntityServiceImpl findActivityIdByStoreProduct "{params,returnObj}" -x 2并没有发现被4903这个key被频繁调用（应该是redisson-netty-1-*这类线程在底层频繁调用）
 
@@ -107,8 +107,7 @@ root@prod-java-2:/# jmap -histo 1 | head -50
 
 #### 测试结果
 压测搜索接口，执行redis sleep操作，无法重现问题；执行docker restart redis，可以重现。即使停掉压测接口，流量还是没有下降。
-![](_v_images/20190116180244685_796430475.png)
+![](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190116180244685_796430475.png?raw=true)
 
-#### 待解决问题
-1. 是否和redis sentinel模式有关
-2. 是否和客户端netty版本或者bug有关
+#### 确认问题
+使用RBatch时候才有如上问题，具体参考[issue](https://github.com/redisson/redisson/issues/1567)
