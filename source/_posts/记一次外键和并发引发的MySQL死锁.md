@@ -39,7 +39,8 @@ org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.j
 - 将某个订单的状态修改为125
 - 压力测试同一个订单的next_step接口
 - 因为next_step会将订单状态修改为130，因此不一定重现，所有保持压力的同时订单状态通过客服调度接口调回125，查看接口返回内容。
-  通过如上方法，我们在测试环境重现了死锁问题。
+通过如上方法，我们在测试环境重现了死锁问题。
+
 #### 死锁分析
 重现之后，我们在出现死锁的时候执行MySQL的`show engine innodb status;`命令，查看死锁情况，结果如下：
 ```
@@ -183,6 +184,7 @@ Record lock, heap no 26 PHYSICAL RECORD: n_fields 35; compact format; info bits 
 - 事务2占有一个锁（RECORD LOCKS space id 5338 page no 16 n bits 96 index `PRIMARY` of table `fresh_main_test`.`logisticstasks` trx id 380581807 lock mode S locks rec but not gap
 Record lock, heap no 26）但是它等待（RECORD LOCKS space id 5338 page no 16 n bits 96 index `PRIMARY` of table `fresh_main_test`.`logisticstasks` trx id 380581807 lock_mode X locks rec but not gap waiting Record lock, heap no 26)
 - 事务2被回滚
+
 #### 业务sql分析
 业务sql执行顺序如下:
 ```sql
@@ -219,6 +221,7 @@ SET autocommit=1
 - 事务1执行`update logisticstasks`，尝试获取`logisticstasks`的`id`为123行锁（exclusive mode），因为事务2已经持有`logisticstasks`表`id`为123行锁（share mode），因此事务1等待事务2释放锁
 - 事务2执行`update logisticstasks`，尝试获取`logisticstasks`表`id`为123的行锁（exclusive mode），但是事务1已经持有`logisticstasks`的`id`为123行锁（share mode），因此事务2等待事务1释放锁
 以上，产生死锁。
+
 #### 结果
 如果上条评论的分析正确，那么在删除logisticsroute表外键约束之后，该死锁问题就不复存在。因此我们在压测环境将此外键约束删除，然后重新用之前的方法尝试重现死锁问题。
 
