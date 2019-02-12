@@ -30,7 +30,7 @@ org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.j
 以上日志省略了业务代码那部分的错误，初步排查是由于数据库锁获取失败导致报错。
 
 1. 我们根据错误日志的时间点去反查数据库情况，发现数据库短时间内有三条一样的业务日志产生。根据数据库业务日志再去查询nginx请求日志，发现短时间（ms级）内同一个骑手请求同一个订单流转接口四次（三次成功，一次超时），如下图：
-![](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190212113347689_1865658982.png)
+![](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190212113347689_1865658982.png?raw=true)
 
 2. 既然是并发情况下才会有死锁的问题，我们尝试在测试环境重现。步骤如下：
   - 将某个订单的状态修改为125
