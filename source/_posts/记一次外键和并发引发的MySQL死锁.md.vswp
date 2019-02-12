@@ -5,6 +5,7 @@ date: 2019-02-12 11:04:09
 tags:
 ---
 
+#### 线上错误日志
 线上订单状态流转业务偶尔会报数据库MySQL错误
 ```java
 org.springframework.dao.CannotAcquireLockException:couldnotexecutestatement;SQL[n/a];nestedexceptionisorg.hibernate.exception.LockAcquisitionException:couldnotexecutestatement
@@ -30,15 +31,18 @@ org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.j
 ```
 以上日志省略了业务代码那部分的错误，初步排查是由于数据库锁获取失败导致报错。
 
-1. 我们根据错误日志的时间点去反查数据库情况，发现数据库短时间内有三条一样的业务日志产生。根据数据库业务日志再去查询nginx请求日志，发现短时间（ms级）内同一个骑手请求同一个订单流转接口四次（三次成功，一次超时），如下图：
+#### 数据库业务日志和nginx请求日志分析
+根据错误日志的时间点去反查数据库情况，发现数据库短时间内有三条一样的业务日志产生。根据数据库业务日志再去查询nginx请求日志，发现短时间（ms级）内同一个骑手请求同一个订单流转接口四次（三次成功，一次超时），如下图：
 ![](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190212113347689_1865658982.png?raw=true)
 
-2. 既然是并发情况下才会有死锁的问题，我们尝试在测试环境重现。步骤如下：
-  - 将某个订单的状态修改为125
-  - 压力测试同一个订单的next_step接口
-  - 因为next_step会将订单状态修改为130，因此不一定重现，所有保持压力的同时订单状态通过客服调度接口调回125，查看接口返回内容。
+#### 重现
+既然是并发情况下才会有死锁的问题，我们尝试在测试环境重现。步骤如下：
+- 将某个订单的状态修改为125
+- 压力测试同一个订单的next_step接口
+- 因为next_step会将订单状态修改为130，因此不一定重现，所有保持压力的同时订单状态通过客服调度接口调回125，查看接口返回内容。
   通过如上方法，我们在测试环境重现了死锁问题。
-3. 既然能够重现，那我们在出现死锁的时候执行MySQL的`show engine innodb status;`命令，查看死锁情况，结果如下：
+#### 死锁分析
+重现之后，我们在出现死锁的时候执行MySQL的`show engine innodb status;`命令，查看死锁情况，结果如下：
 ```
 ------------------------
 LATEST DETECTED DEADLOCK
@@ -176,11 +180,12 @@ Record lock, heap no 26 PHYSICAL RECORD: n_fields 35; compact format; info bits 
 *** WE ROLL BACK TRANSACTION (2)
 ```
 分析如下：
-  - 事务1等待来自事务2的锁.
-  - 事务2占有一个锁（RECORD LOCKS space id 5338 page no 16 n bits 96 index `PRIMARY` of table `fresh_main_test`.`logisticstasks` trx id 380581807 lock mode S locks rec but not gap
+- 事务1等待来自事务2的锁.
+- 事务2占有一个锁（RECORD LOCKS space id 5338 page no 16 n bits 96 index `PRIMARY` of table `fresh_main_test`.`logisticstasks` trx id 380581807 lock mode S locks rec but not gap
 Record lock, heap no 26）但是它等待（RECORD LOCKS space id 5338 page no 16 n bits 96 index `PRIMARY` of table `fresh_main_test`.`logisticstasks` trx id 380581807 lock_mode X locks rec but not gap waiting Record lock, heap no 26)
-  - 事务2被回滚
-4. 打印业务sql:
+- 事务2被回滚
+#### 业务sql分析
+业务sql执行顺序如下:
 ```sql
 set session transaction read only
 SET autocommit=0
@@ -210,11 +215,12 @@ commit
 SET autocommit=1
 ```
 可能是由于外键导致死锁（`logisticsroutes`表`task_id`字段的外键是` logisticstasks`的`id`字段），主要分析`insert into logisticsroutes`和`update logisticstasks`这两个语句：
-  - 事务1执行`insert into logisticsroutes`, 因为外键约束，持有`logisticstasks`表`id`为123行锁（share mode）
-  - 事务2执行`insert into logisticsroutes`，因为外键约束，和事务1同时持有`logisticstasks`表`id`为123行锁（share mode）
-  - 事务1执行`update logisticstasks`，尝试获取`logisticstasks`的`id`为123行锁（exclusive mode），因为事务2已经持有`logisticstasks`表`id`为123行锁（share mode），因此事务1等待事务2释放锁
-  - 事务2执行`update logisticstasks`，尝试获取`logisticstasks`表`id`为123的行锁（exclusive mode），但是事务1已经持有`logisticstasks`的`id`为123行锁（share mode），因此事务2等待事务1释放锁
+- 事务1执行`insert into logisticsroutes`, 因为外键约束，持有`logisticstasks`表`id`为123行锁（share mode）
+- 事务2执行`insert into logisticsroutes`，因为外键约束，和事务1同时持有`logisticstasks`表`id`为123行锁（share mode）
+- 事务1执行`update logisticstasks`，尝试获取`logisticstasks`的`id`为123行锁（exclusive mode），因为事务2已经持有`logisticstasks`表`id`为123行锁（share mode），因此事务1等待事务2释放锁
+- 事务2执行`update logisticstasks`，尝试获取`logisticstasks`表`id`为123的行锁（exclusive mode），但是事务1已经持有`logisticstasks`的`id`为123行锁（share mode），因此事务2等待事务1释放锁
 以上，产生死锁。
-5. 如果上条评论的分析正确，那么在删除logisticsroute表外键约束之后，该死锁问题就不复存在。因此我们在压测环境将此外键约束删除，然后重新用之前的方法尝试重现死锁问题。
-测试结果：
-没有发现之前的死锁错误日志，因此可以断定是由于外键约束导致死锁问题。
+#### 结果
+如果上条评论的分析正确，那么在删除logisticsroute表外键约束之后，该死锁问题就不复存在。因此我们在压测环境将此外键约束删除，然后重新用之前的方法尝试重现死锁问题。
+
+测试结果：没有发现之前的死锁错误日志，因此可以断定是由于外键约束导致死锁问题。
