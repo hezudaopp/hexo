@@ -1,7 +1,11 @@
 ---
 title: 记一次外键和并发引发的MySQL死锁
 date: 2019-02-12 11:04:09
-tags:
+tags: 
+- Deadlock
+- Innodb
+- JPA
+- Hibernate
 ---
 
 #### 线上错误日志
