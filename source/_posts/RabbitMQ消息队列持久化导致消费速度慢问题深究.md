@@ -29,7 +29,7 @@ tags:
 
 查看aws ec2实例挂载卷的IOPS监控信息，如下图：
 
-![IOPS](https://github.com/hezudaopp/hexo/row/master/source/_posts/_v_images/20190419215155334_1826587720.png)
+![IOPS](https://github.com/hezudaopp/hexo/raw/master/source/_posts/_v_images/20190419215155334_1826587720.png)
 
 此卷最大每天允许IOPS是300，从图中可以看出，凌晨和上午该卷的IOPS远大于300，到下午和晚上的时候IOPS被限制再100多，于是就会有上图中Load下午和晚上指标飙高的情况。
 
