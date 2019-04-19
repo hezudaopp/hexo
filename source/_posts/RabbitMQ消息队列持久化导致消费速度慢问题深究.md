@@ -11,8 +11,8 @@ tags:
 #### 持久化队列VS瞬时队列
 我们知道磁盘的IO速度远低于内存的操作，如果一条消息，到达RabbitMQ server端队列之后需要持久化之后才能被消费，那么消费的速度自然就会受限于消息的持久化速度，消费速度自然提不起来。如何验证消息的持久化对消费速度的影响呢？我们声明两个消息队列：orders和orders_false_durable，这两个队列处理相同的代码，并且让它们同时监听同一个Exchange规则相同的RoutingKey，然后，Publish大量的消息到这个Exchange的RoutingKey，让这些同时被这两个队列接收消费。我们监控这两个队列的消费速度如下：
 
-![orders](https://github.com/hezudaopp/hexo/raw/master/source/_posts/_v_images/20190419204807018_623498566.png =598x)
-![orders_false_durable](https://github.com/hezudaopp/hexo/raw/master/source/_posts/_v_images/20190419204842309_1567685049.png =679x)
+![orders](https://github.com/hezudaopp/hexo/raw/master/source/_posts/_v_images/20190419204807018_623498566.png)
+![orders_false_durable](https://github.com/hezudaopp/hexo/raw/master/source/_posts/_v_images/20190419204842309_1567685049.png)
 
 从两个队列消费速度对比我们可以发现
 1. 持久化队列的消息消费速度在消息生产的前期一直处于低位，直到生产快结束之后，消息消费速度才大幅提升；消息堆积成线性上升趋势。
@@ -23,13 +23,13 @@ tags:
 #### IOPS影响持久化速度
 接下来你可能会问是什么限制了消息的持久化性能？对，RabbitMQ server的IOPS是你第一个想到的点。通过Grafana监控RabbitMQ集群的指标（Grafana没有监控机器的IOPS），我们发现CPU和Memory指标没有任何异常，但是集群机器中的rabbitmq1的Load指标引起了我的注意：
 
-![Load指标](https://github.com/hezudaopp/hexo/row/master/source/_posts/_v_images/20190419212157133_605753500.png?row=true =499x)
+![Load指标](https://github.com/hezudaopp/hexo/row/master/source/_posts/_v_images/20190419212157133_605753500.png?row=true)
 
 每天上午的Load指标一直正常，但是到下午后一直飙到高位没有下降，直到近凌晨几乎没有业务产生消息后Load才下降。
 
 查看aws ec2实例挂载卷的IOPS监控信息，如下图：
 
-![IOPS](https://github.com/hezudaopp/hexo/row/master/source/_posts/_v_images/20190419215155334_1826587720.png?row=true =696x)
+![IOPS](https://github.com/hezudaopp/hexo/row/master/source/_posts/_v_images/20190419215155334_1826587720.png?row=true)
 
 此卷最大每天允许IOPS是300，从图中可以看出，凌晨和上午该卷的IOPS远大于300，到下午和晚上的时候IOPS被限制再100多，于是就会有上图中Load下午和晚上指标飙高的情况。
 

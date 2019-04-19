@@ -43,7 +43,7 @@ java3指标正常是因为java3的dubbo服务被禁用。
 ```
 
 - 在java2上执行packet peat抓包如图，但是java1, java4却没有抓包（主要考虑java1，java4 io较java2高）
-![](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190116175455944_668045513.png?raw=true)
+![](https://github.com/hezudaopp/hexo/raw/master/source/_posts/_v_images/20190116175455944_668045513.png)
 
 - watch com.pupu.product.service.impl.ActivityEntityServiceImpl findActivityIdByStoreProduct "{params,returnObj}" -x 2并没有发现被4903这个key被频繁调用（应该是redisson-netty-1-*这类线程在底层频繁调用）
 
