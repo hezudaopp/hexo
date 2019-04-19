@@ -36,7 +36,8 @@ org.springframework.aop.framework.JdkDynamicAopProxy.invoke(JdkDynamicAopProxy.j
 
 #### 数据库业务日志和nginx请求日志分析
 根据错误日志的时间点去反查数据库情况，发现数据库短时间内有三条一样的业务日志产生。根据数据库业务日志再去查询nginx请求日志，发现短时间（ms级）内同一个骑手请求同一个订单流转接口四次（三次成功，一次超时），如下图：
-![](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190212113347689_1865658982.png?raw=true)
+
+![logs](https://github.com/hezudaopp/hexo/blob/master/source/_posts/_v_images/20190419222020773_1477664466.png =759x)
 
 #### 重现
 既然是并发情况下才会有死锁的问题，我们尝试在测试环境重现。步骤如下：
