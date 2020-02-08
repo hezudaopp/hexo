@@ -17,7 +17,8 @@ tags:
 - Exchange和RoutingKey由__生产端__声明，同学需要对消费端可见
 
 #### Kafka
-- topic表示领域，类似RabbitMQ中的Exchange
-- 消息header中携带事件（kafka消息的key一般用作分区，不适合将事件封装在key中）
-- publish方定义事件常量，该常量需定义在对consumer可见的包下
-- consumer方根据publish方定义的事件常量过滤消息
+- topic表示领域事件，类似RabbitMQ中的RoutingKey，topic名称一般是`领域.事件`
+- 以业务消费逻辑为单元定义consumerGroup
+- publish方往特定的topic下推送消息
+- 一般以领域中的聚合id的hash值来做topic下patition的依据
+- consumerGroup下可以定义小于等于patition数的consumer
