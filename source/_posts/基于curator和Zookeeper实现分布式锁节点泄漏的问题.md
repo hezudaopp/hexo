@@ -29,7 +29,7 @@ Zookeeper使用JAVA实现，CPU飙高大概率是由于GC导致的；再通过�
 - 问题为何产生
 1. Curator的InterProcessMutex实现分布式锁，会在某个固定的节点下重建`临时顺序`子节点，当锁释放的时候，这个固定的节点并不会释放。
 2. 当我们需要更细粒度的锁时，一般会根据业务来控制锁的粒度。比如扣减库存的场景，我们一般会选用商品id作为锁节点名称的一部分，然后再在这个节点下创建子节点。每次锁释放之后，这个节点都会被留下。随着业务的增长，就会留下很多的没有子节点也没有值的Znode。这些Znode就用占用大量的堆内存空间，影响JVM FullGC的频率以及CPU的使用率。
-- 如果解决问题
+- 如何解决问题
 1. 升级Zookeeper和Curator版本，Zookeeper 3.5以及之后版本支持CONTAINER类型节点，主要特性为：当子节点为空时，能够自动删除父节点（A CONTAINER node is the same as a PERSISTENT node with the additional property that when its last child is deleted, it is deleted (and CONTAINER nodes recursively up the tree are deleted if empty)）。
 2. 自定义简单的分布式互斥锁，拿锁的时候创建`临时节点`，释放的锁的时候删除该临时节点即可。
 #### 如何删除大量如此大量的节点
