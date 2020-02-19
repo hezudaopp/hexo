@@ -5,7 +5,7 @@ tags:
   - Dubbo
   - 优雅停机
 ---
-基于Dubbo 2.6.0版本
+本文基于Dubbo 2.6.0版本，Dubbo 2.7.x已经修复了本文提到的问题：https://juejin.im/post/5dbe992f6fb9a0202610c745
 ## 问题抛出
 ### provider方的优雅停机
 Dubbo服务提供方主要通过以下流程实现优雅停机：
