@@ -77,7 +77,7 @@ trace 命令能主动搜索 class-pattern／method-pattern 对应的方法调用
 ```shell
 sudo su -
 docker ps
-docker exec -it inapideploy_notification-service_1 bash
+docker exec -it order-service_1 bash
 ```
 2. 进入Arthas
 ```shell
@@ -87,28 +87,28 @@ java -jar /app/arthas-boot.jar --repo-mirror aliyun --use-http
 #### 3.2. 方法的参数，返回值和异常
 1. 参数和返回值
 ```shell
-watch com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState nextStep "{params, returnObj}" -x 2
+watch me.jawinton.TaskState nextStep "{params, returnObj}" -x 2
 Press Q or Ctrl+C to abort.
 Affect(class-cnt:1 , method-cnt:1) cost in 322 ms.
 ts=2019-04-23 16:46:31; [cost=212.880012ms] result=@ArrayList[
     @Object[][isEmpty=false;size=4],
-    @LogisticsTasks[LogisticsTasks(id=9fba1974-8165-4b68-abf6-b84ef273ca52, taskNum=000101556008897002, storeId=6660fb8b-9a97-417c-ab47-1ef9c102e64a, placeId=9b9110be-03d8-4f6a-9274-39639148346c, storeDistance=1422.0, logisticsType=10, sourceType=0, sourceId=9fba1974-8165-4b68-abf6-b84ef273ca52, sourceNum=0101556008897002, buyerId=ea356bd0-4da9-4888-9a4b-cd4e9cd2da81, logisticsStatus=110, deliveryTimeType=0, timeDeliveryPromise=1556010702440, isHasReceipt=false, executerId=0c4f156b-d69a-4bf8-88cf-c164b07893e7, executerName=余秀禹, executerPhone=17605009769, taskStatus=10, totalPrice=3948, remark=新版调度系统：手动抢单, userIdCreate=00000000-0000-0000-0000-000000000000, timeCreate=1556008902440, timeUpdate=1556009190781, userIdUpdate=00000000-0000-0000-0000-000000000000, receiverId=12012559-3dc4-432d-93e6-165130e03d78, isPrint=true, processStatus=10, internalTaskNum=H3164135, timeDeliveryPromiseStart=1556010702440, timeDeliveryPromiseEnd=1556010702440, productWeight=8835, isReady=true, sortNum=0)],
+    @Tasks[Tasks(id=9fbae934-8165-4c68-abf6-b84ef273ca52)],
 ]
 ```
 2. 异常
 ```shell
-watch com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState nextStep "{params, returnObj}" -e -x 2
+watch me.jawinton.TaskState nextStep "{params, returnObj}" -e -x 2
 ```
 
 #### 3.3. 代码是否被正确发布
 - 判断方法是否存在
 ```shell
-sm com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState nextStep
+sm me.jawinton.State nextStep
 ```
 
 - 反编译代码
 ```shell
-jad com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState nextStep
+jad me.jawinton.TaskState nextStep
 ClassLoader:                                                                    
 +-org.springframework.boot.loader.LaunchedURLClassLoader@21b8d17c               
   +-sun.misc.Launcher$AppClassLoader@677327b6                                   
@@ -116,48 +116,19 @@ ClassLoader:
 
 Location:                                                                       
 file:/app/order-service.jar!/BOOT-INF/classes!/                                 
-
-public LogisticsTasks nextStep(JwtUser jwtUser, String storeId, LogisticsTasks logisticsTask, String stageId) throws ExecutionException, InterruptedException {
-    PupuAssert.isTrue((boolean)(logisticsTask.getLogisticsStatus().intValue() == LogisticsStatus.WAIT_CONFIRM.getValue()), (PupuResponsible)OrderErrorCode.NOT_WAIT_CONFIRM_STATUS);
-    long timeNow = System.currentTimeMillis();
-    LogisticsStatus targetLogisticsStatus = LogisticsStatus.CONFIRM;
-    Orders order = this.logisticsTasksService.getOrders(logisticsTask.getSourceId());
-    PupuAssert.notNull((Object)order, (PupuResponsible)OrderErrorCode.NOT_FOUND_ORDER);
-    PupuAssert.hasText((String)order.getLogisticsTaskId(), (PupuResponsible)OrderErrorCode.EMPTY_LOGISTICS_TASK_ID);
-    PupuAssert.isTrue((boolean)(!UUIDUtils.isEmptyUUID((String)order.getLogisticsTaskId())), (PupuResponsible)OrderErrorCode.EMPTY_LOGISTICS_TASK_ID);
-    this.logisticsTasksService.getLogisticsTaskState(targetLogisticsStatus).updateOrderAttributes(jwtUser.getId(), jwtUser.getName(), order, timeNow, null, targetLogisticsStatus.getValue());
-    AdminUsersDTO adminUsersDTO = this.logisticsTasksService.getAndValidateAdminUsersDTO(jwtUser.getId());
-    LogisticsTasks modifiedLogisticsTask = this.logisticsTasksService.updateLogisticsTaskStatus(adminUsersDTO, adminUsersDTO, logisticsTask, order, targetLogisticsStatus, "\u65b0\u7248\u8c03\u5ea6\u7cfb\u7edf\uff1a\u624b\u52a8\u62a2\u5355", timeNow);
-    return modifiedLogisticsTask;
-}
 ```
 
 #### 3.4. 跟踪代码执行路径以及耗时
 ```shell
-trace com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState nextStep -n 1
+trace me.jawinton.TaskState nextStep -n 1
 Press Q or Ctrl+C to abort.
 Affect(class-cnt:1 , method-cnt:1) cost in 186 ms.
 `---ts=2019-04-23 17:09:51;thread_name=http-nio-8080-exec-17;id=5c72;is_daemon=true;priority=5;TCCL=org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedWebappClassLoader@5d42104a
-    `---[13.712399ms] com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState:nextStep()
-        +---[0.043594ms] com.pupu.order.domain.LogisticsTasks:getLogisticsStatus()
+    `---[13.712399ms] me.jawinton.TaskState:nextStep()
+        +---[0.043594ms] me.jawinton.Tasks:getStatus()
         +---[0.004181ms] java.lang.Integer:intValue()
-        +---[min=0.001294ms,max=0.003618ms,total=0.004912ms,count=2] com.pupu.core.common.enums.LogisticsStatus:getValue()
-        +---[min=0.001192ms,max=0.006326ms,total=0.007518ms,count=2] com.pupu.core.utils.PupuAssert:isTrue()
-        +---[0.009649ms] java.lang.System:currentTimeMillis()
-        +---[0.003327ms] com.pupu.order.domain.LogisticsTasks:getSourceId()
-        +---[0.507863ms] com.pupu.order.service.ILogisticsTasksService:getOrders()
-        +---[0.003765ms] com.pupu.core.utils.PupuAssert:notNull()
-        +---[min=0.001142ms,max=0.00692ms,total=0.008062ms,count=2] com.pupu.order.domain.Orders:getLogisticsTaskId()
-        +---[0.006506ms] com.pupu.core.utils.PupuAssert:hasText()
-        +---[0.005608ms] com.pupu.core.utils.UUIDUtils:isEmptyUUID()
-        +---[0.004321ms] com.pupu.order.service.ILogisticsTasksService:getLogisticsTaskState()
-        +---[min=0.001255ms,max=0.005872ms,total=0.007127ms,count=2] com.pupu.core.dto.web.JwtUser:getId()
-        +---[0.002526ms] com.pupu.core.dto.web.JwtUser:getName()
-        +---[0.001169ms] java.lang.Integer:<init>()
-        +---[0.001286ms] java.lang.reflect.Method:invoke()
-        +---[0.050409ms] com.pupu.order.state.logistics.ILogisticsTaskState:updateOrderAttributes()
-        +---[2.796072ms] com.pupu.order.service.ILogisticsTasksService:getAndValidateAdminUsersDTO()
-        `---[9.858717ms] com.pupu.order.service.ILogisticsTasksService:updateLogisticsTaskStatus()
+        +---[min=0.001294ms,max=0.003618ms,total=0.004912ms,count=2] me.jawinton.enums.LogisticsStatus:getValue()
+        +---[min=0.001192ms,max=0.006326ms,total=0.007518ms,count=2] me.jawinton.utils.MyAssert:isTrue()
 
 Command execution times exceed limit: 1, so command will exit. You can set it with -n option.
 ```
@@ -165,118 +136,37 @@ Command execution times exceed limit: 1, so command will exit. You can set it wi
 #### 3.5. ognl条件表达式
 - watch特定参数值
 ```shell
-watch com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState nextStep "{params, returnObj}" "params[1]=='6660fb8b-9a97-417c-ab47-1ef9c102e64a'" -x 3
+watch me.jawinton.WatchExample nextStep "{params, returnObj}" "params[1]=='6162fb8b-9a97-417c-ab47-1ef9c302e64a'" -x 3
 Press Q or Ctrl+C to abort.
 Affect(class-cnt:1 , method-cnt:1) cost in 150 ms.
 ts=2019-04-23 17:00:40; [cost=13.303476ms] result=@ArrayList[
     @Object[][
-        @JwtUser[
-            id=@String[0c4f156b-d69a-4bf8-88cf-c164b07893e7],
-            userName=@String[109266],
-            name=@String[余秀禹],
-            adminGroupId=@String[6bbb23c1-bc6d-41fb-bc9f-febb4dfeba34],
-            isNotNovice=null,
+        @User[
+            id=@String[0c4f156b-d69a-4bc8-88cf-c164b07293e7]
         ],
-        @String[6660fb8b-9a97-417c-ab47-1ef9c102e64a],
-        @LogisticsTasks[
-            id=@String[757a07e3-d4c1-4160-9f8b-061198694d9d],
-            taskNum=@String[000101556009712984],
-            storeId=@String[6660fb8b-9a97-417c-ab47-1ef9c102e64a],
-            placeId=@String[6caac681-f336-4d26-aeb8-64c5e22c7162],
-            storeDistance=@Double[2239.0],
-            logisticsType=@Integer[10],
-            sourceType=@Integer[0],
-            sourceId=@String[757a07e3-d4c1-4160-9f8b-061198694d9d],
-            sourceNum=@String[0101556009712984],
-            buyerId=@String[146ef980-0057-4e0e-81bd-a7290793727e],
-            logisticsStatus=@Integer[110],
-            deliveryTimeType=@Integer[0],
-            timeDeliveryPromise=@Long[1556011519437],
-            isHasReceipt=@Boolean[false],
-            executerId=@String[0c4f156b-d69a-4bf8-88cf-c164b07893e7],
-            executerName=@String[余秀禹],
-            executerPhone=@String[17605009769],
-            taskStatus=@Integer[10],
-            totalPrice=@Integer[1942],
-            remark=@String[新版调度系统：手动抢单],
-            userIdCreate=@String[00000000-0000-0000-0000-000000000000],
-            timeCreate=@Long[1556009719437],
-            timeUpdate=@Long[1556010040663],
-            userIdUpdate=@String[00000000-0000-0000-0000-000000000000],
-            receiverId=@String[7bd8be3d-e65b-42c6-bcb1-7174fc4a80e1],
-            isPrint=@Boolean[true],
-            processStatus=@Integer[10],
-            internalTaskNum=@String[G1165567],
-            timeDeliveryPromiseStart=@Long[1556011519437],
-            timeDeliveryPromiseEnd=@Long[1556011519437],
-            productWeight=@Integer[700],
-            isReady=@Boolean[true],
-            sortNum=@Integer[0],
+        @String[6162fb8b-9a97-417c-ab47-1ef9c302e64a],
+        @Tasks[
+            id=@String[757a07e3-d411-4260-9f8b-061198694d9d]
         ],
         @String[],
     ],
-    @LogisticsTasks[
-        id=@String[757a07e3-d4c1-4160-9f8b-061198694d9d],
-        taskNum=@String[000101556009712984],
-        storeId=@String[6660fb8b-9a97-417c-ab47-1ef9c102e64a],
-        placeId=@String[6caac681-f336-4d26-aeb8-64c5e22c7162],
-        storeDistance=@Double[2239.0],
-        logisticsType=@Integer[10],
-        sourceType=@Integer[0],
-        sourceId=@String[757a07e3-d4c1-4160-9f8b-061198694d9d],
-        sourceNum=@String[0101556009712984],
-        buyerId=@String[146ef980-0057-4e0e-81bd-a7290793727e],
-        logisticsStatus=@Integer[110],
-        deliveryTimeType=@Integer[0],
-        timeDeliveryPromise=@Long[1556011519437],
-        isHasReceipt=@Boolean[false],
-        executerId=@String[0c4f156b-d69a-4bf8-88cf-c164b07893e7],
-        executerName=@String[余秀禹],
-        executerPhone=@String[17605009769],
-        taskStatus=@Integer[10],
-        totalPrice=@Integer[1942],
-        remark=@String[新版调度系统：手动抢单],
-        userIdCreate=@String[00000000-0000-0000-0000-000000000000],
-        timeCreate=@Long[1556009719437],
-        timeUpdate=@Long[1556010040663],
-        userIdUpdate=@String[00000000-0000-0000-0000-000000000000],
-        receiverId=@String[7bd8be3d-e65b-42c6-bcb1-7174fc4a80e1],
-        isPrint=@Boolean[true],
-        processStatus=@Integer[10],
-        internalTaskNum=@String[G1165567],
-        timeDeliveryPromiseStart=@Long[1556011519437],
-        timeDeliveryPromiseEnd=@Long[1556011519437],
-        productWeight=@Integer[700],
-        isReady=@Boolean[true],
-        sortNum=@Integer[0],
+    @Tasks[
+        id=@String[757907e3-d4c1-4160-9f8b-061118694d9d]
     ],
 ]
 ```
 
 - 关注执行慢的函数
 ```shell
-trace com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState nextStep '#cost > 10'
+trace me.jawinton.TracerExample nextStep '#cost > 10'
 Press Q or Ctrl+C to abort.
 Affect(class-cnt:1 , method-cnt:1) cost in 167 ms.
 `---ts=2019-04-23 17:07:49;thread_name=http-nio-8080-exec-31;id=5c91;is_daemon=true;priority=5;TCCL=org.springframework.boot.context.embedded.tomcat.TomcatEmbeddedWebappClassLoader@5d42104a
-    `---[13.41925ms] com.pupu.order.state.logistics.WaitConfirmLogisticsTaskState:nextStep()
-        +---[0.019738ms] com.pupu.order.domain.LogisticsTasks:getLogisticsStatus()
+    `---[13.41925ms] me.jawinton.TracerExample:nextStep()
+        +---[0.019738ms] me.jawinton.TracerExample:getStatus()
         +---[0.004759ms] java.lang.Integer:intValue()
-        +---[min=0.004369ms,max=0.020002ms,total=0.024371ms,count=2] com.pupu.core.common.enums.LogisticsStatus:getValue()
-        +---[min=0.00206ms,max=0.005935ms,total=0.007995ms,count=2] com.pupu.core.utils.PupuAssert:isTrue()
-        +---[0.010221ms] java.lang.System:currentTimeMillis()
-        +---[0.003777ms] com.pupu.order.domain.LogisticsTasks:getSourceId()
-        +---[0.370217ms] com.pupu.order.service.ILogisticsTasksService:getOrders()
-        +---[0.005365ms] com.pupu.core.utils.PupuAssert:notNull()
-        +---[min=0.001964ms,max=0.008411ms,total=0.010375ms,count=2] com.pupu.order.domain.Orders:getLogisticsTaskId()
-        +---[0.008749ms] com.pupu.core.utils.PupuAssert:hasText()
-        +---[0.007843ms] com.pupu.core.utils.UUIDUtils:isEmptyUUID()
-        +---[0.005402ms] com.pupu.order.service.ILogisticsTasksService:getLogisticsTaskState()
-        +---[min=0.002019ms,max=0.007799ms,total=0.009818ms,count=2] com.pupu.core.dto.web.JwtUser:getId()
-        +---[0.271536ms] com.pupu.core.dto.web.JwtUser:getName()
-        +---[0.054686ms] com.pupu.order.state.logistics.ILogisticsTaskState:updateOrderAttributes()
-        +---[3.046402ms] com.pupu.order.service.ILogisticsTasksService:getAndValidateAdminUsersDTO()
-        `---[8.517051ms] com.pupu.order.service.ILogisticsTasksService:updateLogisticsTaskStatus()
+        +---[min=0.004369ms,max=0.020002ms,total=0.024371ms,count=2] me.jawintonStatus:getValue()
+        +---[min=0.00206ms,max=0.005935ms,total=0.007995ms,count=2] 
 ```
 
 #### 3.6. 找出cpu占用高的线程并打印stack trace信息
@@ -355,16 +245,16 @@ Affect(row-cnt:0) cost in 80 ms.
 #### 3.7. 方法重载如何处理
 - 找出所有的重载方法
 ```shell
-sm com.pupu.order.repository.CommentRepository listKnightComment
+sm me.jawinton.order.repository.CommentRepository listComment
 com.sun.proxy.$Proxy200 listKnightComment(JJ)Ljava/util/List;
 com.sun.proxy.$Proxy200 listKnightComment(Ljava/lang/String;JJ)Ljava/util/List;
-com.pupu.order.repository.CommentRepository listKnightComment(JJ)Ljava/util/List;
-com.pupu.order.repository.CommentRepository listKnightComment(Ljava/lang/String;JJ)Ljava/util/List;
+me.jawinton.repository.CommentRepository listComment(JJ)Ljava/util/List;
+me.jawinton.repository.CommentRepository listComment(Ljava/lang/String;JJ)Ljava/util/List;
 Affect(row-cnt:4) cost in 21 ms.
 ```
 - ognl表达式过滤
 ```shell
-watch com.pupu.order.repository.CommentRepository listKnightComment "{params, returnObj}" "params.length > 3" -x 2
+watch me.jawinton.repository.CommentRepository listComment "{params, returnObj}" "params.length > 3" -x 2
 ```
 
 #### 3.8. Arthas端口冲突和日志查看
@@ -407,7 +297,7 @@ ps aux| grep 86308
 ```
 4. 进入Docker
 ```shell
-docker exec -it inapideploy_order-service_1 bash
+docker exec -it order-service_1 bash
 ```
 5. shutdown Docker内存的Arthas
 ```shell
